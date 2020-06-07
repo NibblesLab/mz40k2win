@@ -65,6 +65,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
+    HBITMAP hBitmap;
+    HBRUSH hBackGround;
+
+    hBitmap = LoadBitmap(hInstance, MAKEINTRESOURCE(IDB_BASE));
+    hBackGround = CreatePatternBrush(hBitmap);
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
@@ -75,8 +80,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MZ40K2WIN));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_MZ40K2WIN);
+    wcex.hbrBackground  = hBackGround; //(HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName   = 0;
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -97,8 +102,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // グローバル変数にインスタンス ハンドルを格納する
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass, 0, WS_POPUP,
+      100, 100, 800, 180, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -123,8 +128,29 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    HDC hdc, hBuffer;
+    static HBITMAP hKeyBmp[32];
+    POINT po;
+    HMENU tmp, hMenu, hTMenu;
+    static HMENU hMenuR;
+
     switch (message)
     {
+    case WM_CREATE:
+        for (UINT num = 0; num < 32; num++)
+        {
+            hKeyBmp[num] = (HBITMAP)LoadImage(((LPCREATESTRUCT)(lParam))->hInstance, MAKEINTRESOURCE(IDB_KEY40 + num), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+            UINT id = num + 200;
+            CreateWindow(
+                TEXT("BUTTON"), TEXT(""),
+                WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                keyX[num], keyY[num], 40, 40, hWnd, (HMENU)id,
+                ((LPCREATESTRUCT)(lParam))->hInstance, NULL
+            );
+        }
+        tmp = LoadMenu(((LPCREATESTRUCT)(lParam))->hInstance, MAKEINTRESOURCE(IDC_POPUPMENU));
+        hMenuR = GetSubMenu(tmp, 0);
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -149,6 +175,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // TODO: HDC を使用する描画コードをここに追加してください...
             EndPaint(hWnd, &ps);
         }
+        break;
+    case WM_DRAWITEM:
+        {
+            int wmId = LOWORD(wParam);
+            if (wmId >= IDB_KEY40 && wmId <= IDB_KEY71)
+            {
+                hdc = ((LPDRAWITEMSTRUCT)(lParam))->hDC;
+                hBuffer = CreateCompatibleDC(hdc);
+                SelectObject(hBuffer, hKeyBmp[wmId - 200]);
+
+                if (((LPDRAWITEMSTRUCT)(lParam))->itemState & ODS_SELECTED)
+                {
+                    BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 40, SRCCOPY);
+                }
+                else
+                {
+                    BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 0, SRCCOPY);
+                }
+
+            DeleteDC(hBuffer);
+            }
+        }
+        return TRUE;
+    case WM_RBUTTONUP:
+        po.x = LOWORD(lParam);
+        po.y = HIWORD(lParam);
+        ClientToScreen(hWnd, &po);
+        //hMenu = CreateMenu();
+        TrackPopupMenu(hMenuR, TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+            po.x, po.y, 0, hWnd, NULL
+        );
+        break;
+    case WM_LBUTTONDOWN:
+        ReleaseCapture();
+        SendMessage(hWnd, WM_SYSCOMMAND, SC_MOVE | 2, 0);
         break;
     case WM_DESTROY:
         PostQuitMessage(0);

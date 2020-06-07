@@ -45,5 +45,104 @@
     <Image Include="mz40k2win.ico">
       <Filter>リソース ファイル</Filter>
     </Image>
+    <Image Include="key_l_mi.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_do.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_do_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_fa.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_fa_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_la.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_la_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_mi.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_re.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_re_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_si.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_sol.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_h_sol_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_fa.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_fa_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_la.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_la_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_si.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_sol.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_l_sol_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_do.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_do_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_fa.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_fa_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_la.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_la_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_mi.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_re.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_re_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_si.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_sol.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="key_m_sol_s.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="base.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
   </ItemGroup>
 </Project>
