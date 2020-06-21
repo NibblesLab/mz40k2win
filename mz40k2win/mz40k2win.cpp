@@ -2,6 +2,7 @@
 //
 
 #include "framework.h"
+#include <mmsystem.h>
 #include "mz40k2win.h"
 
 #define MAX_LOADSTRING 100
@@ -131,12 +132,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc, hBuffer;
     static HBITMAP hKeyBmp[32];
     POINT po;
-    HMENU tmp, hMenu, hTMenu;
-    static HMENU hMenuR;
+    HMENU tmp, hTMenu;
+    static HMENU hMenu, hSubMenu;
+    MENUITEMINFOW mii;
+    MIDIOUTCAPS outCaps;
+    MMRESULT res;
+    WCHAR str[MAXERRORLENGTH];
+    static UINT opendMidiDevId;
+    static HMIDIOUT hMidiOut;
 
     switch (message)
     {
     case WM_CREATE:
+        // キーを配置
         for (UINT num = 0; num < 32; num++)
         {
             hKeyBmp[num] = (HBITMAP)LoadImage(((LPCREATESTRUCT)(lParam))->hInstance, MAKEINTRESOURCE(IDB_KEY40 + num), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
@@ -148,23 +156,136 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 ((LPCREATESTRUCT)(lParam))->hInstance, NULL
             );
         }
-        tmp = LoadMenu(((LPCREATESTRUCT)(lParam))->hInstance, MAKEINTRESOURCE(IDC_POPUPMENU));
-        hMenuR = GetSubMenu(tmp, 0);
+        // メニューの設定
+        hMenu = CreatePopupMenu();
+        hSubMenu = CreateMenu();
+        mii.cbSize = sizeof(MENUITEMINFOW);
+        mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_SUBMENU;
+        mii.hSubMenu = hSubMenu;
+        mii.fState = MFS_ENABLED;
+        mii.fType = MFT_STRING;
+        mii.dwTypeData = (LPWSTR)TEXT("connect MIDI...");
+        mii.wID = IDM_MIDI;
+        InsertMenuItemW(hMenu, 0, TRUE, &mii);
+        mii.fMask = MIIM_TYPE;
+        mii.fType = MFT_SEPARATOR;
+        InsertMenuItemW(hMenu, 1, TRUE, &mii);
+        mii.fMask = MIIM_TYPE | MIIM_ID;
+        mii.fType = MFT_STRING;
+        mii.dwTypeData = (LPWSTR)TEXT("About...");
+        mii.wID = IDM_ABOUT;
+        InsertMenuItemW(hMenu, 2, TRUE, &mii);
+        mii.dwTypeData = (LPWSTR)TEXT("Exit");
+        mii.wID = IDM_EXIT;
+        InsertMenuItemW(hMenu, 3, TRUE, &mii);
+        for (UINT i = 0; ; i++)
+        {
+            res = midiOutGetDevCaps(i, &outCaps, sizeof(outCaps));
+            if (res == MMSYSERR_NOERROR)
+            {
+                wcscpy_s(str, MAXERRORLENGTH, (const WCHAR*)outCaps.szPname);
+                mii.fMask = MIIM_TYPE | MIIM_ID;
+                mii.dwTypeData = str;
+                mii.wID = IDM_MIDIOUT + i;
+                mii.fState = MFS_ENABLED;
+            }
+            else if (i == 0)
+            {
+                mii.fMask = MIIM_TYPE;
+                mii.dwTypeData = (LPWSTR)TEXT("None");
+                mii.fState = MFS_GRAYED;
+            }
+            else
+            {
+                break;
+            }
+            InsertMenuItemW(hSubMenu, i, TRUE, &mii);
+        }
+        // MIDI出力デバイス管理変数の初期化
+        opendMidiDevId = 0;
         break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
             // 選択されたメニューの解析:
-            switch (wmId)
+            if (wmId < IDM_MIDIOUT)
             {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
+                switch (wmId)
+                {
+                case IDM_ABOUT:
+                    DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                    break;
+                case IDM_EXIT:
+                    // 使用中のMIDIデバイスのクローズ
+                    if (opendMidiDevId != 0)
+                    {
+                        midiOutReset(hMidiOut);
+                        midiOutClose(hMidiOut);
+                    }
+                    DestroyWindow(hWnd);
+                    break;
+                default:
+                    return DefWindowProc(hWnd, message, wParam, lParam);
+                }
+            }
+            else
+            {
+                // 既にオープンしているデバイスでなければオープンする
+                if (wmId != opendMidiDevId)
+                {
+                    // 使用不可デバイスでなければオープンする
+                    mii.cbSize = sizeof(MENUITEMINFOW);
+                    mii.fMask = MIIM_STATE;
+                    GetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                    if (!(mii.fState & MFS_GRAYED))
+                    {
+                        // 使用中のデバイスのクローズ
+                        if (opendMidiDevId != 0)
+                        {
+                            midiOutReset(hMidiOut);
+                            midiOutClose(hMidiOut);
+                        }
+
+                        // デバイスのオープン
+                        res = midiOutOpen(&hMidiOut, wmId - IDM_MIDIOUT, 0, 0, 0);
+                        if (res != MMSYSERR_NOERROR)
+                        {
+                            // エラー発生時、メッセージを表示する
+                            midiOutGetErrorText(res, str, sizeof(str));
+                            MessageBox(hWnd, str, TEXT("ERROR"), MB_ICONSTOP | MB_OK);
+
+                            // 以前選択していたデバイスがあれば、再度オープンする
+                            if (opendMidiDevId != 0)
+                            { 
+                                // デバイスのオープン
+                                res = midiOutOpen(&hMidiOut, opendMidiDevId - IDM_MIDIOUT, 0, 0, 0);
+                                if (res != MMSYSERR_NOERROR)
+                                { 
+                                    // なぜかエラーになるのでメニューのチェックマークを消す
+                                    mii.cbSize = sizeof(MENUITEMINFOW);
+                                    mii.fMask = MIIM_STATE;
+                                    GetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                                    mii.fState = MFS_ENABLED;
+                                    SetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                                    // 非選択状態
+                                    opendMidiDevId = 0;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // メニューのチェックマークを消す
+                            mii.fState = MFS_ENABLED;
+                            SetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+
+                            // メニューのオープンしたデバイスにチェックマークをつける
+                            opendMidiDevId = wmId;
+                            GetMenuItemInfo(hSubMenu, wmId, FALSE, &mii);
+                            mii.fState = MFS_CHECKED;
+                            SetMenuItemInfo(hSubMenu, wmId, FALSE, &mii);
+                        }
+                    }
+                }
             }
         }
         break;
@@ -202,8 +323,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         po.x = LOWORD(lParam);
         po.y = HIWORD(lParam);
         ClientToScreen(hWnd, &po);
-        //hMenu = CreateMenu();
-        TrackPopupMenu(hMenuR, TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+        TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_BOTTOMALIGN,
             po.x, po.y, 0, hWnd, NULL
         );
         break;

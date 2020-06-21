@@ -47,6 +47,7 @@
 #define IDB_KEY69                       229
 #define IDB_KEY70                       230
 #define IDB_KEY71                       231
+#define IDM_MIDIOUT						900
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
