@@ -154,26 +154,36 @@ void NoteOff(UINT note)
     bool flg = false;
 
     // バッファに最後に登録されている音(今鳴っている)か
-    if (NoteBuf[NoteCnt - 1] == note) {
+    if (NoteBuf[NoteCnt - 1] == note)
+    {
         // 今鳴らしてるのなら止めておく
         keyOff(NoteBuf[NoteCnt - 1]);
         // リストを詰める
         NoteCnt--;
     }
-    else {
+    else
+    {
         // リストから探して削除
-        for (UINT i = 0; i < NoteCnt; i++) {
-            if (flg) {
+        for (UINT i = 0; i < NoteCnt; i++)
+        {
+            if (flg)
+            {
                 NoteBuf[i - 1] = NoteBuf[i];
             }
-            if (NoteBuf[i] == note) {
+            if (NoteBuf[i] == note)
+            {
                 flg = true;
             }
         }
-        if (flg) NoteCnt--;
+        if (flg)
+        {
+            NoteCnt--;
+            return;
+        }
     }
 
-    if (NoteCnt != 0) {
+    if (NoteCnt != 0)
+    {
         // 二番目に新しかった音を鳴らす
         keyOn(NoteBuf[NoteCnt - 1]);
     }
@@ -183,28 +193,39 @@ void NoteOff(UINT note)
 // ノートオン処理
 //    後着優先で音を鳴らす
 //
-void NoteOn(UINT note) {
+void NoteOn(UINT note)
+{
 
     // バッファに登録済のノートは無視
-    for (UINT i = 0; i < NoteCnt; i++) {
-        if (NoteBuf[i] == note) {
+    for (UINT i = 0; i < NoteCnt; i++)
+    {
+        if (NoteBuf[i] == note)
+        {
             return;
         }
     }
 
     // バッファがいっぱい？
-    if (NoteCnt == MAX_NOTE_CNT) {
+    if (NoteCnt == MAX_NOTE_CNT)
+    {
         // 玉突き処理
         for (UINT i = 0; i < (MAX_NOTE_CNT - 1); i++) {
             NoteBuf[i] = NoteBuf[i + 1];
         }
         NoteBuf[MAX_NOTE_CNT - 1] = note;
     }
-    else {
+    else
+    {
         NoteBuf[NoteCnt] = note;
         NoteCnt++;
     }
 
+    // 今鳴ってる音があるなら消す
+    if (NoteCnt > 1)
+    {
+        keyOff(NoteBuf[NoteCnt - 2]);
+    }
+    // 音を出す
     keyOn(note);
 }
 
@@ -417,7 +438,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 0, SRCCOPY);
                 }
 
-            DeleteDC(hBuffer);
+                DeleteDC(hBuffer);
             }
         }
         return TRUE;
@@ -432,6 +453,76 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONDOWN:
         ReleaseCapture();
         SendMessage(hWnd, WM_SYSCOMMAND, SC_MOVE | 2, 0);
+        break;
+    case WM_KEYDOWN:
+        {
+            UINT note;
+            UINT wmId = LOWORD(wParam);
+            if (wmId >= 0x41 && wmId <= 0x5a)
+            {
+                note = keyNote[wmId - 0x41];
+            }
+            else if (wmId >= 0xba && wmId <= 0xbf)
+            {
+                note = keyNote[wmId - 0xa0];
+            }
+            else if (wmId == 0xe2)
+            {
+                note = keyNote[0x20];
+            }
+            else if (wmId == 0xdd)
+            {
+                note = keyNote[0x21];
+            }
+            else
+            {
+                break;
+            }
+            if (note != 0)
+            {
+                NoteOn(note);
+                hdc = GetDC(hButton[note - 40]);
+                hBuffer = CreateCompatibleDC(hdc);
+                SelectObject(hBuffer, hKeyBmp[note - 40]);
+                BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 40, SRCCOPY);
+                DeleteDC(hBuffer);
+            }
+        }
+        break;
+    case WM_KEYUP:
+        {
+            UINT note;
+            UINT wmId = LOWORD(wParam);
+            if (wmId >= 0x41 && wmId <= 0x5a)
+            {
+                note = keyNote[wmId - 0x41];
+            }
+            else if (wmId >= 0xba && wmId <= 0xbf)
+            {
+                note = keyNote[wmId - 0xa0];
+            }
+            else if (wmId == 0xe2)
+            {
+                note = keyNote[0x20];
+            }
+            else if (wmId == 0xdd)
+            {
+                note = keyNote[0x21];
+            }
+            else
+            {
+                break;
+            }
+            if (note != 0)
+            {
+                NoteOff(note);
+                hdc = GetDC(hButton[note - 40]);
+                hBuffer = CreateCompatibleDC(hdc);
+                SelectObject(hBuffer, hKeyBmp[note - 40]);
+                BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 0, SRCCOPY);
+                DeleteDC(hBuffer);
+            }
+    }
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
