@@ -3,14 +3,20 @@
 
 #include "framework.h"
 #include <mmsystem.h>
+#include <commctrl.h>
 #include "mz40k2win.h"
 
 #define MAX_LOADSTRING 100
+#define MAX_NOTE_CNT  8
 
 // グローバル変数:
 HINSTANCE hInst;                                // 現在のインターフェイス
 WCHAR szTitle[MAX_LOADSTRING];                  // タイトル バーのテキスト
 WCHAR szWindowClass[MAX_LOADSTRING];            // メイン ウィンドウ クラス名
+WCHAR NoteCnt = 0;
+WCHAR NoteBuf[MAX_NOTE_CNT];
+UINT opendMidiDevId;
+HMIDIOUT hMidiOut;
 
 // このコード モジュールに含まれる関数の宣言を転送します:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -118,19 +124,116 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 }
 
 //
-//  関数: WndProc(HWND, UINT, WPARAM, LPARAM)
+// キーオン
 //
-//  目的: メイン ウィンドウのメッセージを処理します。
+void keyOn(UINT note)
+{
+    if (opendMidiDevId)
+    {
+        midiOutShortMsg(hMidiOut, 0x007f0090 | (note << 8));
+    }
+}
+
 //
-//  WM_COMMAND  - アプリケーション メニューの処理
-//  WM_PAINT    - メイン ウィンドウを描画する
-//  WM_DESTROY  - 中止メッセージを表示して戻る
+// キーオフ
 //
+void keyOff(UINT note)
+{
+    if (opendMidiDevId)
+    {
+        midiOutShortMsg(hMidiOut, 0x00000090 | (note << 8));
+    }
+}
+
+//
+// ノートオフ
+//    キーを押した順を記憶し、離した時の次の音を逆順で決める
+//
+void NoteOff(UINT note)
+{
+    bool flg = false;
+
+    // バッファに最後に登録されている音(今鳴っている)か
+    if (NoteBuf[NoteCnt - 1] == note) {
+        // 今鳴らしてるのなら止めておく
+        keyOff(NoteBuf[NoteCnt - 1]);
+        // リストを詰める
+        NoteCnt--;
+    }
+    else {
+        // リストから探して削除
+        for (UINT i = 0; i < NoteCnt; i++) {
+            if (flg) {
+                NoteBuf[i - 1] = NoteBuf[i];
+            }
+            if (NoteBuf[i] == note) {
+                flg = true;
+            }
+        }
+        if (flg) NoteCnt--;
+    }
+
+    if (NoteCnt != 0) {
+        // 二番目に新しかった音を鳴らす
+        keyOn(NoteBuf[NoteCnt - 1]);
+    }
+}
+
+//
+// ノートオン処理
+//    後着優先で音を鳴らす
+//
+void NoteOn(UINT note) {
+
+    // バッファに登録済のノートは無視
+    for (UINT i = 0; i < NoteCnt; i++) {
+        if (NoteBuf[i] == note) {
+            return;
+        }
+    }
+
+    // バッファがいっぱい？
+    if (NoteCnt == MAX_NOTE_CNT) {
+        // 玉突き処理
+        for (UINT i = 0; i < (MAX_NOTE_CNT - 1); i++) {
+            NoteBuf[i] = NoteBuf[i + 1];
+        }
+        NoteBuf[MAX_NOTE_CNT - 1] = note;
+    }
+    else {
+        NoteBuf[NoteCnt] = note;
+        NoteCnt++;
+    }
+
+    keyOn(note);
+}
+
+//
+// ボタン入力のサブプロシージャ(全ボタン共通)
+//
+LRESULT CALLBACK keyPressProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    switch (message)
+    {
+    case WM_LBUTTONDOWN:
+        NoteOn(dwRefData);
+        break;
+    case WM_LBUTTONUP:
+        NoteOff(dwRefData);
+        break;
+    }
+
+    return DefSubclassProc(hWnd, message, wParam, lParam);
+}
+
+//
+//  メイン ウィンドウのメッセージ処理
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HDC hdc, hBuffer;
     static HBITMAP hKeyBmp[32];
+    static HWND hButton[32];
     POINT po;
     HMENU tmp, hTMenu;
     static HMENU hMenu, hSubMenu;
@@ -138,8 +241,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     MIDIOUTCAPS outCaps;
     MMRESULT res;
     WCHAR str[MAXERRORLENGTH];
-    static UINT opendMidiDevId;
-    static HMIDIOUT hMidiOut;
 
     switch (message)
     {
@@ -149,12 +250,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             hKeyBmp[num] = (HBITMAP)LoadImage(((LPCREATESTRUCT)(lParam))->hInstance, MAKEINTRESOURCE(IDB_KEY40 + num), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
             UINT id = num + 200;
-            CreateWindow(
+            hButton[num] = CreateWindow(
                 TEXT("BUTTON"), TEXT(""),
                 WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
                 keyX[num], keyY[num], 40, 40, hWnd, (HMENU)id,
                 ((LPCREATESTRUCT)(lParam))->hInstance, NULL
             );
+            SetWindowSubclass(hButton[num], keyPressProc, id, 40 + num);
         }
         // メニューの設定
         hMenu = CreatePopupMenu();
