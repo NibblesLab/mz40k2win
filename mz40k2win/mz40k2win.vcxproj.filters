@@ -144,5 +144,17 @@
     <Image Include="base.bmp">
       <Filter>リソース ファイル</Filter>
     </Image>
+    <Image Include="boy.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="boy_msk.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="logo.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="logo_msk.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
   </ItemGroup>
 </Project>

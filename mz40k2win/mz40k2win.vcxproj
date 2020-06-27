@@ -162,6 +162,8 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="base.bmp" />
+    <Image Include="boy.bmp" />
+    <Image Include="boy_msk.bmp" />
     <Image Include="key_h_do.bmp" />
     <Image Include="key_h_do_s.bmp" />
     <Image Include="key_h_fa.bmp" />
@@ -194,6 +196,8 @@
     <Image Include="key_m_si.bmp" />
     <Image Include="key_m_sol.bmp" />
     <Image Include="key_m_sol_s.bmp" />
+    <Image Include="logo.bmp" />
+    <Image Include="logo_msk.bmp" />
     <Image Include="mz40k2win.ico" />
     <Image Include="small.ico" />
   </ItemGroup>

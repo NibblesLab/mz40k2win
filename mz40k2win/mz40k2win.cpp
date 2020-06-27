@@ -15,8 +15,10 @@ WCHAR szTitle[MAX_LOADSTRING];                  // タイトル バーのテキ�
 WCHAR szWindowClass[MAX_LOADSTRING];            // メイン ウィンドウ クラス名
 WCHAR NoteCnt = 0;
 WCHAR NoteBuf[MAX_NOTE_CNT];
-UINT opendMidiDevId;
+UINT opendMidiDevId, midiCh;
 HMIDIOUT hMidiOut;
+HBITMAP hKeyBmp[32];
+HWND hButton[32];
 
 // このコード モジュールに含まれる関数の宣言を転送します:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -130,7 +132,7 @@ void keyOn(UINT note)
 {
     if (opendMidiDevId)
     {
-        midiOutShortMsg(hMidiOut, 0x007f0090 | (note << 8));
+        midiOutShortMsg(hMidiOut, 0x007f0090 | (note << 8) + midiCh);
     }
 }
 
@@ -141,7 +143,7 @@ void keyOff(UINT note)
 {
     if (opendMidiDevId)
     {
-        midiOutShortMsg(hMidiOut, 0x00000090 | (note << 8));
+        midiOutShortMsg(hMidiOut, 0x00000090 | (note << 8) + midiCh);
     }
 }
 
@@ -195,7 +197,6 @@ void NoteOff(UINT note)
 //
 void NoteOn(UINT note)
 {
-
     // バッファに登録済のノートは無視
     for (UINT i = 0; i < NoteCnt; i++)
     {
@@ -230,6 +231,84 @@ void NoteOn(UINT note)
 }
 
 //
+// キー押下処理
+//
+void keyDown(WPARAM wParam)
+{
+    HDC hdc, hBuffer;
+    UINT note;
+    UINT wmId = LOWORD(wParam);
+    if (wmId >= 0x41 && wmId <= 0x5a)
+    {
+        note = keyNote[wmId - 0x41];
+    }
+    else if (wmId >= 0xba && wmId <= 0xbf)
+    {
+        note = keyNote[wmId - 0xa0];
+    }
+    else if (wmId == 0xe2)
+    {
+        note = keyNote[0x20];
+    }
+    else if (wmId == 0xdd)
+    {
+        note = keyNote[0x21];
+    }
+    else
+    {
+        return;
+    }
+    if (note != 0)
+    {
+        NoteOn(note);
+        hdc = GetDC(hButton[note - 40]);
+        hBuffer = CreateCompatibleDC(hdc);
+        SelectObject(hBuffer, hKeyBmp[note - 40]);
+        BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 40, SRCCOPY);
+        DeleteDC(hBuffer);
+    }
+}
+
+//
+// キー離上処理
+//
+void keyUp(WPARAM wParam)
+{
+    HDC hdc, hBuffer;
+    UINT note;
+    UINT wmId = LOWORD(wParam);
+    if (wmId >= 0x41 && wmId <= 0x5a)
+    {
+        note = keyNote[wmId - 0x41];
+    }
+    else if (wmId >= 0xba && wmId <= 0xbf)
+    {
+        note = keyNote[wmId - 0xa0];
+    }
+    else if (wmId == 0xe2)
+    {
+        note = keyNote[0x20];
+    }
+    else if (wmId == 0xdd)
+    {
+        note = keyNote[0x21];
+    }
+    else
+    {
+        return;
+    }
+    if (note != 0)
+    {
+        NoteOff(note);
+        hdc = GetDC(hButton[note - 40]);
+        hBuffer = CreateCompatibleDC(hdc);
+        SelectObject(hBuffer, hKeyBmp[note - 40]);
+        BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 0, SRCCOPY);
+        DeleteDC(hBuffer);
+    }
+}
+
+//
 // ボタン入力のサブプロシージャ(全ボタン共通)
 //
 LRESULT CALLBACK keyPressProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
@@ -242,6 +321,12 @@ LRESULT CALLBACK keyPressProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
     case WM_LBUTTONUP:
         NoteOff(dwRefData);
         break;
+    case WM_KEYDOWN:
+        keyDown(wParam);
+        break;
+    case WM_KEYUP:
+        keyUp(wParam);
+        break;
     }
 
     return DefSubclassProc(hWnd, message, wParam, lParam);
@@ -253,11 +338,11 @@ LRESULT CALLBACK keyPressProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HDC hdc, hBuffer;
-    static HBITMAP hKeyBmp[32];
-    static HWND hButton[32];
+    //static HBITMAP hKeyBmp[32];
+    //static HWND hButton[32];
     POINT po;
     HMENU tmp, hTMenu;
-    static HMENU hMenu, hSubMenu;
+    static HMENU hMenu, hDevMenu, hChMenu;
     MENUITEMINFOW mii;
     MIDIOUTCAPS outCaps;
     MMRESULT res;
@@ -281,26 +366,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         // メニューの設定
         hMenu = CreatePopupMenu();
-        hSubMenu = CreateMenu();
+        hDevMenu = CreateMenu();
+        hChMenu = CreateMenu();
         mii.cbSize = sizeof(MENUITEMINFOW);
         mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_SUBMENU;
-        mii.hSubMenu = hSubMenu;
+        mii.hSubMenu = hDevMenu;
         mii.fState = MFS_ENABLED;
         mii.fType = MFT_STRING;
-        mii.dwTypeData = (LPWSTR)TEXT("connect MIDI...");
-        mii.wID = IDM_MIDI;
+        mii.dwTypeData = (LPWSTR)TEXT("MIDI device");
+        mii.wID = IDM_MIDIDEV;
         InsertMenuItemW(hMenu, 0, TRUE, &mii);
+        mii.hSubMenu = hChMenu;
+        mii.dwTypeData = (LPWSTR)TEXT("MIDI channel");
+        mii.wID = IDM_MIDICH;
+        InsertMenuItemW(hMenu, 1, TRUE, &mii);
         mii.fMask = MIIM_TYPE;
         mii.fType = MFT_SEPARATOR;
-        InsertMenuItemW(hMenu, 1, TRUE, &mii);
+        InsertMenuItemW(hMenu, 2, TRUE, &mii);
         mii.fMask = MIIM_TYPE | MIIM_ID;
         mii.fType = MFT_STRING;
         mii.dwTypeData = (LPWSTR)TEXT("About...");
         mii.wID = IDM_ABOUT;
-        InsertMenuItemW(hMenu, 2, TRUE, &mii);
+        InsertMenuItemW(hMenu, 3, TRUE, &mii);
         mii.dwTypeData = (LPWSTR)TEXT("Exit");
         mii.wID = IDM_EXIT;
-        InsertMenuItemW(hMenu, 3, TRUE, &mii);
+        InsertMenuItemW(hMenu, 4, TRUE, &mii);
         for (UINT i = 0; ; i++)
         {
             res = midiOutGetDevCaps(i, &outCaps, sizeof(outCaps));
@@ -308,6 +398,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 wcscpy_s(str, MAXERRORLENGTH, (const WCHAR*)outCaps.szPname);
                 mii.fMask = MIIM_TYPE | MIIM_ID;
+                mii.fType = MFT_STRING;
                 mii.dwTypeData = str;
                 mii.wID = IDM_MIDIOUT + i;
                 mii.fState = MFS_ENABLED;
@@ -322,16 +413,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 break;
             }
-            InsertMenuItemW(hSubMenu, i, TRUE, &mii);
+            InsertMenuItemW(hDevMenu, i, TRUE, &mii);
+        }
+        for (UINT i = 0; i < 16; i++)
+        {
+            wsprintf(str, TEXT("%d"), i + 1);
+            mii.fMask = MIIM_TYPE | MIIM_ID;
+            mii.fType = MFT_STRING;
+            mii.dwTypeData = str;
+            mii.wID = IDM_MIDINUM + i;
+            mii.fState = MFS_ENABLED;
+            InsertMenuItemW(hChMenu, i, TRUE, &mii);
         }
         // MIDI出力デバイス管理変数の初期化
         opendMidiDevId = 0;
+        midiCh = 0;
+        mii.fMask = MIIM_STATE;
+        GetMenuItemInfo(hChMenu, IDM_MIDINUM, FALSE, &mii);
+        mii.fState = MFS_CHECKED;
+        SetMenuItemInfo(hChMenu, IDM_MIDINUM, FALSE, &mii);
         break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
             // 選択されたメニューの解析:
-            if (wmId < IDM_MIDIOUT)
+            if (wmId < IDM_MIDINUM)
             {
                 switch (wmId)
                 {
@@ -351,6 +457,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     return DefWindowProc(hWnd, message, wParam, lParam);
                 }
             }
+            else if (wmId < IDM_MIDIOUT)
+            {
+                if (midiCh != (wmId - IDM_MIDINUM))
+                {
+                    // 今選択してないチャンネルを指定されたら
+                    // 選択しているチャンネルのチェックを外す
+                    mii.cbSize = sizeof(MENUITEMINFOW);
+                    mii.fMask = MIIM_STATE;
+                    GetMenuItemInfo(hChMenu, IDM_MIDINUM + midiCh, FALSE, &mii);
+                    mii.fState = MFS_ENABLED;
+                    SetMenuItemInfo(hChMenu, IDM_MIDINUM + midiCh, FALSE, &mii);
+                    // 選択されたチェックを付ける
+                    GetMenuItemInfo(hChMenu, wmId, FALSE, &mii);
+                    mii.fState = MFS_CHECKED;
+                    SetMenuItemInfo(hChMenu, wmId, FALSE, &mii);
+                    midiCh = wmId - IDM_MIDINUM;
+                }
+            }
             else
             {
                 // 既にオープンしているデバイスでなければオープンする
@@ -359,7 +483,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     // 使用不可デバイスでなければオープンする
                     mii.cbSize = sizeof(MENUITEMINFOW);
                     mii.fMask = MIIM_STATE;
-                    GetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                    GetMenuItemInfo(hDevMenu, opendMidiDevId, FALSE, &mii);
                     if (!(mii.fState & MFS_GRAYED))
                     {
                         // 使用中のデバイスのクローズ
@@ -387,9 +511,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                                     // なぜかエラーになるのでメニューのチェックマークを消す
                                     mii.cbSize = sizeof(MENUITEMINFOW);
                                     mii.fMask = MIIM_STATE;
-                                    GetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                                    GetMenuItemInfo(hDevMenu, opendMidiDevId, FALSE, &mii);
                                     mii.fState = MFS_ENABLED;
-                                    SetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                                    SetMenuItemInfo(hDevMenu, opendMidiDevId, FALSE, &mii);
                                     // 非選択状態
                                     opendMidiDevId = 0;
                                 }
@@ -399,13 +523,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         {
                             // メニューのチェックマークを消す
                             mii.fState = MFS_ENABLED;
-                            SetMenuItemInfo(hSubMenu, opendMidiDevId, FALSE, &mii);
+                            SetMenuItemInfo(hDevMenu, opendMidiDevId, FALSE, &mii);
 
                             // メニューのオープンしたデバイスにチェックマークをつける
                             opendMidiDevId = wmId;
-                            GetMenuItemInfo(hSubMenu, wmId, FALSE, &mii);
+                            GetMenuItemInfo(hDevMenu, wmId, FALSE, &mii);
                             mii.fState = MFS_CHECKED;
-                            SetMenuItemInfo(hSubMenu, wmId, FALSE, &mii);
+                            SetMenuItemInfo(hDevMenu, wmId, FALSE, &mii);
                         }
                     }
                 }
@@ -455,74 +579,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SendMessage(hWnd, WM_SYSCOMMAND, SC_MOVE | 2, 0);
         break;
     case WM_KEYDOWN:
-        {
-            UINT note;
-            UINT wmId = LOWORD(wParam);
-            if (wmId >= 0x41 && wmId <= 0x5a)
-            {
-                note = keyNote[wmId - 0x41];
-            }
-            else if (wmId >= 0xba && wmId <= 0xbf)
-            {
-                note = keyNote[wmId - 0xa0];
-            }
-            else if (wmId == 0xe2)
-            {
-                note = keyNote[0x20];
-            }
-            else if (wmId == 0xdd)
-            {
-                note = keyNote[0x21];
-            }
-            else
-            {
-                break;
-            }
-            if (note != 0)
-            {
-                NoteOn(note);
-                hdc = GetDC(hButton[note - 40]);
-                hBuffer = CreateCompatibleDC(hdc);
-                SelectObject(hBuffer, hKeyBmp[note - 40]);
-                BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 40, SRCCOPY);
-                DeleteDC(hBuffer);
-            }
-        }
+        keyDown(wParam);
         break;
     case WM_KEYUP:
-        {
-            UINT note;
-            UINT wmId = LOWORD(wParam);
-            if (wmId >= 0x41 && wmId <= 0x5a)
-            {
-                note = keyNote[wmId - 0x41];
-            }
-            else if (wmId >= 0xba && wmId <= 0xbf)
-            {
-                note = keyNote[wmId - 0xa0];
-            }
-            else if (wmId == 0xe2)
-            {
-                note = keyNote[0x20];
-            }
-            else if (wmId == 0xdd)
-            {
-                note = keyNote[0x21];
-            }
-            else
-            {
-                break;
-            }
-            if (note != 0)
-            {
-                NoteOff(note);
-                hdc = GetDC(hButton[note - 40]);
-                hBuffer = CreateCompatibleDC(hdc);
-                SelectObject(hBuffer, hKeyBmp[note - 40]);
-                BitBlt(hdc, 0, 0, 40, 40, hBuffer, 0, 0, SRCCOPY);
-                DeleteDC(hBuffer);
-            }
-    }
+        keyUp(wParam);
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -532,23 +592,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
-
-// バージョン情報ボックスのメッセージ ハンドラーです。
+//
+// バージョン情報ボックス
+//
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
+    HDC hdc, hmdc;
+    PAINTSTRUCT ps;
+    HBITMAP hBitmapL, hBitmapLM, hBitmapB, hBitmapBM;
+    HINSTANCE hInst;
 
+    switch (message) {
+    case WM_PAINT:
+        hdc = BeginPaint(hDlg, &ps);
+        hInst = (HINSTANCE)GetWindowLongPtr(hDlg, GWLP_HINSTANCE);
+        hBitmapLM = LoadBitmap(hInst, MAKEINTRESOURCE(IDB_LOGOM));
+        hBitmapL = LoadBitmap(hInst, MAKEINTRESOURCE(IDB_LOGO));
+        hBitmapBM = LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BOYM));
+        hBitmapB = LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BOY));
+        hmdc = CreateCompatibleDC(hdc);
+        SelectObject(hmdc, hBitmapLM);
+        BitBlt(hdc, 151, 0, 350, 99, hmdc, 0, 0, SRCAND);
+        SelectObject(hmdc, hBitmapL);
+        BitBlt(hdc, 151, 0, 350, 99, hmdc, 0, 0, SRCPAINT);
+        SelectObject(hmdc, hBitmapBM);
+        BitBlt(hdc, 0, 0, 150, 203, hmdc, 0, 0, SRCAND);
+        SelectObject(hmdc, hBitmapB);
+        BitBlt(hdc, 0, 0, 150, 203, hmdc, 0, 0, SRCPAINT);
+        DeleteDC(hmdc);
+        DeleteObject(hBitmapL);
+        DeleteObject(hBitmapLM);
+        DeleteObject(hBitmapB);
+        DeleteObject(hBitmapBM);
+        EndPaint(hDlg, &ps);
+        return (INT_PTR)TRUE;
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
+        switch (LOWORD(wParam)) {
+        case IDOK:
+            EndDialog(hDlg, IDOK);
             return (INT_PTR)TRUE;
         }
-        break;
+    case WM_DESTROY:
+        EndDialog(hDlg, IDOK);
+        return (INT_PTR)TRUE;
     }
     return (INT_PTR)FALSE;
 }

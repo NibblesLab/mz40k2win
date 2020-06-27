@@ -8,12 +8,17 @@
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
-#define IDM_MIDI                        106
 #define IDI_MZ40K2WIN                   107
 #define IDI_SMALL                       108
 #define IDC_MZ40K2WIN                   109
+#define IDM_MIDIDEV                     110
+#define IDM_MIDICH                      111
 #define IDR_MAINFRAME                   128
 #define IDC_POPUPMENU                   162
+#define IDB_BOY                         165
+#define IDB_BOYM                        166
+#define IDB_LOGO                        167
+#define IDB_LOGOM                       168
 #define IDB_BASE                        199
 #define IDB_KEY40                       200
 #define IDB_KEY41                       201
@@ -47,7 +52,8 @@
 #define IDB_KEY69                       229
 #define IDB_KEY70                       230
 #define IDB_KEY71                       231
-#define IDM_MIDIOUT						900
+#define IDM_MIDINUM                     800
+#define IDM_MIDIOUT                     900
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -55,7 +61,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        164
+#define _APS_NEXT_RESOURCE_VALUE        169
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           110
