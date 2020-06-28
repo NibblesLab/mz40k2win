@@ -9,7 +9,6 @@
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
 #define IDI_MZ40K2WIN                   107
-#define IDI_SMALL                       108
 #define IDC_MZ40K2WIN                   109
 #define IDM_MIDIDEV                     110
 #define IDM_MIDICH                      111
@@ -19,6 +18,8 @@
 #define IDB_BOYM                        166
 #define IDB_LOGO                        167
 #define IDB_LOGOM                       168
+#define IDI_ICON1                       169
+#define IDI_SMALL                       169
 #define IDB_BASE                        199
 #define IDB_KEY40                       200
 #define IDB_KEY41                       201
@@ -61,7 +62,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        169
+#define _APS_NEXT_RESOURCE_VALUE        170
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           110

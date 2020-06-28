@@ -1,4 +1,7 @@
-﻿// mz40k2win.cpp : アプリケーションのエントリ ポイントを定義します。
+﻿//
+// MZ-40K2 Simulator for Windows(64bit)
+//
+//                   (c)2020 NibblesLab
 //
 
 #include "framework.h"
@@ -9,18 +12,19 @@
 #define MAX_LOADSTRING 100
 #define MAX_NOTE_CNT  8
 
-// グローバル変数:
+// グローバル変数
 HINSTANCE hInst;                                // 現在のインターフェイス
 WCHAR szTitle[MAX_LOADSTRING];                  // タイトル バーのテキスト
 WCHAR szWindowClass[MAX_LOADSTRING];            // メイン ウィンドウ クラス名
-WCHAR NoteCnt = 0;
-WCHAR NoteBuf[MAX_NOTE_CNT];
-UINT opendMidiDevId, midiCh;
-HMIDIOUT hMidiOut;
-HBITMAP hKeyBmp[32];
-HWND hButton[32];
+WCHAR NoteCnt = 0;                              // ノートオンのまま保持されている数
+WCHAR NoteBuf[MAX_NOTE_CNT];                    // ノートオンのヒストリ
+UINT opendMidiDevId;                            // 開いているMIDIデバイスのID
+UINT midiCh;                                    // MIDI出力チャンネル
+HMIDIOUT hMidiOut;                              // MIDI出力ハンドル
+HBITMAP hKeyBmp[32];                            // キーに割り付けた画像
+HWND hButton[32];                               // キーのウィンドウハンドル
 
-// このコード モジュールに含まれる関数の宣言を転送します:
+// プロトタイプ宣言
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -34,14 +38,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: ここにコードを挿入してください。
-
-    // グローバル文字列を初期化する
+    // グローバル文字列の初期化
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_MZ40K2WIN, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
-    // アプリケーション初期化の実行:
+    // アプリケーション初期化
     if (!InitInstance (hInstance, nCmdShow))
     {
         return FALSE;
@@ -51,7 +53,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
 
-    // メイン メッセージ ループ:
+    // メイン メッセージ ループ
     while (GetMessage(&msg, nullptr, 0, 0))
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
@@ -65,11 +67,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 }
 
 
-
 //
-//  関数: MyRegisterClass()
-//
-//  目的: ウィンドウ クラスを登録します。
+// ウィンドウクラスの登録
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
@@ -98,14 +97,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 }
 
 //
-//   関数: InitInstance(HINSTANCE, int)
-//
-//   目的: インスタンス ハンドルを保存して、メイン ウィンドウを作成します
-//
-//   コメント:
-//
-//        この関数で、グローバル変数でインスタンス ハンドルを保存し、
-//        メイン プログラム ウィンドウを作成および表示します。
+// メインウィンドウ作成
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
@@ -125,6 +117,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+
 //
 // キーオン
 //
@@ -136,6 +129,7 @@ void keyOn(UINT note)
     }
 }
 
+
 //
 // キーオフ
 //
@@ -146,6 +140,7 @@ void keyOff(UINT note)
         midiOutShortMsg(hMidiOut, 0x00000090 | (note << 8) + midiCh);
     }
 }
+
 
 //
 // ノートオフ
@@ -191,6 +186,7 @@ void NoteOff(UINT note)
     }
 }
 
+
 //
 // ノートオン処理
 //    後着優先で音を鳴らす
@@ -229,6 +225,7 @@ void NoteOn(UINT note)
     // 音を出す
     keyOn(note);
 }
+
 
 //
 // キー押下処理
@@ -269,6 +266,7 @@ void keyDown(WPARAM wParam)
     }
 }
 
+
 //
 // キー離上処理
 //
@@ -308,6 +306,7 @@ void keyUp(WPARAM wParam)
     }
 }
 
+
 //
 // ボタン入力のサブプロシージャ(全ボタン共通)
 //
@@ -332,6 +331,7 @@ LRESULT CALLBACK keyPressProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
     return DefSubclassProc(hWnd, message, wParam, lParam);
 }
 
+
 //
 //  メイン ウィンドウのメッセージ処理
 //
@@ -341,7 +341,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     //static HBITMAP hKeyBmp[32];
     //static HWND hButton[32];
     POINT po;
-    HMENU tmp, hTMenu;
     static HMENU hMenu, hDevMenu, hChMenu;
     MENUITEMINFOW mii;
     MIDIOUTCAPS outCaps;
@@ -592,6 +591,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
+
 //
 // バージョン情報ボックス
 //
